@@ -35,12 +35,16 @@
 #define COLON 0x0800
 #define CLEAR 0x0000
 
+
+
 unsigned int characters[] = {ZERO, ONE, TWO, THREE, FOUR, FIVE, SIX, SEVEN, EIGHT, NINE};
 unsigned int punctuation[] = {DECIMAL, APOSTROPHE, COLON};
+unsigned int index = 0;
 
 void setLEDs(unsigned int pattern);
 void selfTest();
 void iterateAllDigits(unsigned int dig1Pattern, unsigned int dig2Pattern, unsigned int dig3Pattern, unsigned int dig4Pattern, unsigned int punctuation);
+void setupTimer();
 
 /*
  *
@@ -52,8 +56,10 @@ int main(int argc, char** argv) {
 
     // reset everything
     LATB = 0x0000;
+    setupTimer();
+    TMR1 = 0;
     while (1) {
-        selfTest();
+
     } // main loop
     return (EXIT_SUCCESS);
 }
@@ -91,6 +97,38 @@ void setLEDs(unsigned int pattern) {
         SH_CP_low();
     }
     ST_CP_high();
+}
+
+void setupTimer() {
+    // Set timer 2
+    T2CON = 0x8000;
+    TMR2 = 0x00;
+    PR2 = 0xFF;
+    _T2IE = 1;
+    _T2IF = 0;
+
+    // Set timer 4 to tick about four times a second
+    T4CON = 0x8000;
+    TMR4 = 0x00;
+    PR4 = 64000;
+    _T4IE = 1;
+    _T4IF = 0;
+}
+
+void _ISRFAST __attribute__((interrupt, auto_psv)) _T2Interrupt(void) {
+    setLEDs(DIG1 | characters[index]);
+    setLEDs(DIG2 | characters[index]);
+    setLEDs(DIG3 | characters[index]);
+    setLEDs(DIG4 | characters[index]);
+
+    _T2IF = 0;
+}
+
+void _ISRFAST __attribute__((interrupt, auto_psv)) _T4Interrupt(void) {
+    if (index++ >= 10) {
+        index = 0;
+    }
+    _T4IF = 0;
 }
 
 
